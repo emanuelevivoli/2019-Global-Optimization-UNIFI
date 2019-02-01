@@ -1,0 +1,9 @@
+data
+runs
+all_scalars.json
+file.csv
+
+__pycache__
+
+#VIVOLI
+test_pytorch.py
