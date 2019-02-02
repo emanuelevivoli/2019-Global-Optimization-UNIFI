@@ -7,6 +7,9 @@ import torch.nn.functional as F
 
 import torch.optim as optim
 
+import datetime
+from tensorboardX import SummaryWriter
+
 
 class Net(nn.Module):
 
@@ -27,6 +30,8 @@ class Net(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
         # max training epochs
         self.max_epochs = max_epochs
+
+        self.tensorboard = SummaryWriter()
 
         # selection of device to use
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,6 +81,10 @@ class Net(nn.Module):
 
             print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(running_loss/loss_updates), end="\r")
             losses.append(running_loss/loss_updates)
+            self.tensorboard.add_scalar('data/scalar_systemtime', running_loss, epoch)
+
+        self.tensorboard.export_scalars_to_json("./all_scalars.json")
+        self.tensorboard.close()
 
         return losses
 
