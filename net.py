@@ -10,7 +10,7 @@ import torch.optim as optim
 
 class Net(nn.Module):
 
-    def __init__(self, max_epochs, learning_rate, useGPU=True):
+    def __init__(self, max_epochs, learning_rate, weight_decay, useGPU=True):
         super(Net, self).__init__()
 
         # net layers
@@ -24,7 +24,7 @@ class Net(nn.Module):
         # loss function
         self.criterion = nn.CrossEntropyLoss()
         # loss optimizer
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
         # max training epochs
         self.max_epochs = max_epochs
 
@@ -48,6 +48,7 @@ class Net(nn.Module):
         for epoch in range(self.max_epochs):  # loop over the dataset multiple times
 
             running_loss = 0.0
+            loss_updates = 0
             for i, data in enumerate(trainloader, 0):
 
                 # get the inputs
@@ -67,14 +68,14 @@ class Net(nn.Module):
 
                 # loss update
                 running_loss += loss.item()
+                loss_updates += 1
 
                 # print statistics
                 if i % 2000 == 1999:  # print every 2000 mini-batches
-                    print('[%d, %5d] loss: %.3f' %
-                          (epoch + 1, i + 1, running_loss / 2000))
-                    running_loss = 0.0
+                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / loss_updates))
 
-            losses.append(running_loss)
+            print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(running_loss/loss_updates), end="\r")
+            losses.append(running_loss/loss_updates)
 
         return losses
 
@@ -83,6 +84,7 @@ class Net(nn.Module):
         correct = 0
         total = 0
         loss = 0.0
+        num_batches = 0
         with torch.no_grad():
             for data in testloader:
 
@@ -97,11 +99,13 @@ class Net(nn.Module):
 
                 # loss update
                 loss += self.criterion(outputs, labels).item()
+                num_batches += 1
 
                 # update numbers of total and correct predictions
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
         accuracy = 100 * correct / total
+        loss /= num_batches
         return round(accuracy, 1), loss
 
