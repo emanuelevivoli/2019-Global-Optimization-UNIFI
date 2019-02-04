@@ -48,15 +48,20 @@ class Net(nn.Module):
         x = self.fc3(x)
         return x
 
-    def fit(self, trainloader):
-        losses = []
+    # patience: number of epochs without validation loss improvements for early stopping
+    def fit(self, trainloader, validationloader, patience=-1):
+        training_losses = []
+        validation_losses = []
+        best_validation_loss = 9999999999
+        waited_epochs = 0
         for epoch in range(self.max_epochs):  # loop over the dataset multiple times
 
-            running_loss = 0.0
-            loss_updates = 0
+            ''' calculate training loss and do optimizer step '''
+            training_loss = 0.0
+            training_loss_updates = 0
             for i, data in enumerate(trainloader, 0):
 
-                # get the inputs
+                # get the inputs from training set
                 inputs, labels = data
 
                 if self.useGPU:
@@ -71,22 +76,57 @@ class Net(nn.Module):
                 loss.backward()
                 self.optimizer.step()
 
-                # loss update
-                running_loss += loss.item()
-                loss_updates += 1
+                # training loss update
+                training_loss += loss.item()
+                training_loss_updates += 1
 
                 # print statistics
                 if i % 2000 == 1999:  # print every 2000 mini-batches
-                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / loss_updates))
+                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, training_loss / training_loss_updates))
+            training_loss /= training_loss_updates
+            training_losses.append(training_loss)
 
-            print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(running_loss/loss_updates), end="\r")
-            losses.append(running_loss/loss_updates)
-            self.tensorboard.add_scalar('data/scalar_systemtime', running_loss, epoch)
+            ''' calculate validation loss '''
+            validation_loss = 0.0
+            validation_loss_updates = 0
+            for i, data in enumerate(validationloader, 0):
+
+                # get the inputs from validation set
+                inputs, labels = data
+                if self.useGPU:
+                    inputs, labels = inputs.to(self.device), labels.to(self.device)
+
+                # predict batch labels
+                outputs = self(inputs)
+
+                # calculate batch loss
+                loss = self.criterion(outputs, labels)
+
+                # validation loss update
+                validation_loss += loss.item()
+                validation_loss_updates += 1
+            validation_loss /= validation_loss_updates
+            validation_losses.append(validation_loss)
+
+            ''' print and save info of this epoch '''
+            print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(training_loss) +
+                  ", validation_loss=" + str(validation_loss), end="\r")
+            self.tensorboard.add_scalar('data/scalar_systemtime', training_loss, epoch)
+            # TODO per tensorboard, aggiungere una cosa analoga per la loss del validation
+
+            ''' early stopping '''
+            if validation_loss < best_validation_loss:
+                waited_epochs = 0
+            else:
+                if waited_epochs == patience:
+                    print("Training terminated by early stopping on epoch " + str(epoch))
+                    break
+                waited_epochs += 1
 
         self.tensorboard.export_scalars_to_json("./all_scalars.json")
         self.tensorboard.close()
 
-        return losses
+        return training_losses, validation_losses
 
     def eval_metrics(self, testloader):
 
