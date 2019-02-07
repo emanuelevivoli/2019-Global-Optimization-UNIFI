@@ -19,7 +19,7 @@ def evaluate_RBF(hyperparameters):
 
 
 def evaluate_BAY(learning_rate, weight_decay):
-    max_epochs = 10
+    max_epochs = 15
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = Net(max_epochs, learning_rate, weight_decay).to(device)
@@ -54,8 +54,8 @@ if __name__ == "__main__":
         file_csv.writerow(['hyp_opt', 'learning_rate', 'weight_decay', 'max_epochs', 'training_loss', 'validation_loss', 'test_loss', 'accuracy'])
 
     hyp_opt = "RBF"
-    bb = rbfopt.RbfoptUserBlackBox(2, [0.00001, 0.0], [0.001, 0.001], ['R', 'R'], evaluate_RBF)
-    settings = rbfopt.RbfoptSettings(max_evaluations=10)
+    bb = rbfopt.RbfoptUserBlackBox(2, [0.0001, 0.0], [0.1, 0.001], ['R', 'R'], evaluate_RBF)
+    settings = rbfopt.RbfoptSettings(max_evaluations=20)
     alg = rbfopt.RbfoptAlgorithm(settings, bb)
     val, x, itercount, evalcount, fast_evalcount = alg.optimize()
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         file_csv.writerow(['hyp_opt', 'learning_rate', 'weight_decay', 'max_epochs', 'training_loss', 'validation_loss', 'test_loss', 'accuracy'])
 
     hyp_opt = "BAY"
-    pb = {"learning_rate": (0.00001, 0.001), "weight_decay": (0, 0.001)}
+    pb = {"learning_rate": (0.0001, 0.1), "weight_decay": (0, 0.001)}
     bay_opt = BayesianOptimization(f=evaluate_BAY, pbounds=pb)
-    bay_opt.maximize(init_points=5, n_iter=5)
+    bay_opt.maximize(init_points=5, n_iter=15)
     print(bay_opt.max)
