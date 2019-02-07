@@ -113,7 +113,8 @@ class Net(nn.Module):
             ''' print and save info of this epoch '''
             print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(training_loss) +
                   ", validation_loss=" + str(validation_loss), end="\r")
-            self.tensorboard.add_scalar('data/scalar_systemtime', training_loss, epoch)
+            self.tensorboard.add_scalar('data/training_loss', training_loss, epoch)
+            self.tensorboard.add_scalar('data/validation_loss', validation_loss, epoch)
             # TODO per tensorboard, aggiungere una cosa analoga per la loss del validation
 
             ''' early stopping '''
