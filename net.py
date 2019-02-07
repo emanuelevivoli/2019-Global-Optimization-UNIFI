@@ -1,13 +1,10 @@
 import torch
-import torchvision
-import torchvision.transforms as transforms
 
 import torch.nn as nn
 import torch.nn.functional as F
 
 import torch.optim as optim
 
-import datetime
 from tensorboardX import SummaryWriter
 
 
@@ -82,9 +79,6 @@ class Net(nn.Module):
                 training_loss += loss.item()
                 training_loss_updates += 1
 
-                # print statistics
-                if i % 2000 == 1999:  # print every 2000 mini-batches
-                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, training_loss / training_loss_updates))
             training_loss /= training_loss_updates
             training_losses.append(training_loss)
 
@@ -125,7 +119,6 @@ class Net(nn.Module):
                     break
                 waited_epochs += 1
 
-        self.tensorboard.export_scalars_to_json("./all_scalars.json")
         self.tensorboard.close()
 
         return training_losses, validation_losses

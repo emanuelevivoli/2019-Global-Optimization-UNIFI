@@ -1,6 +1,20 @@
+import sys
 import torch
 import torchvision
 from torch.utils.data import sampler
+
+
+class Logger:
+    def __init__(self, log_file):
+        self.terminal = sys.stdout
+        self.log = open(log_file, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        pass
 
 
 class ChunkSampler(sampler.Sampler):
@@ -38,7 +52,6 @@ def getCIFAR10(transform=None, validation=True):
     testloader = torch.utils.data.DataLoader(testset, batch_size=bs, shuffle=False, num_workers=nw)
 
     if validation:
-        # validationset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform) # non so se va usato
         validationloader = torch.utils.data.DataLoader(trainset, batch_size=bs, shuffle=False, num_workers=nw, sampler=ChunkSampler(validation_size, train_size))
         return trainloader, validationloader, testloader
 
