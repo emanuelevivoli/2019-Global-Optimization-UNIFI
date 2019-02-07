@@ -36,7 +36,7 @@ def evaluate_BAY(learning_rate, weight_decay):
 
     print(hyp_opt + "(lr=" + str(learning_rate) + ", wd=" + str(weight_decay) + "), max_epochs=" + str(max_epochs) +
           ": training_loss=" + str(training_losses[-1]) + ", validation_loss=" + str(validation_losses[-1]) +
-          "test_loss=" + str(test_loss) + ", test_accuracy=" + str(accuracy))
+          ", test_loss=" + str(test_loss) + ", test_accuracy=" + str(accuracy))
 
     return test_loss
 
