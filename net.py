@@ -145,8 +145,8 @@ class Net(nn.Module):
 
             ''' print and save info of this epoch '''
             print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(training_loss) +
-                  ", validation_loss=" + str(validation_loss) + "training_accuracy=" + str(training_accuracy) +
-                  "validation_accuracy=" + str(validation_accuracy), end="\r")
+                  ", validation_loss=" + str(validation_loss) + ", training_accuracy=" + str(training_accuracy) +
+                  ", validation_accuracy=" + str(validation_accuracy), end="\r")
             self.tensorboard.add_scalar('data/training_loss', training_loss, epoch)
             self.tensorboard.add_scalar('data/validation_loss', validation_loss, epoch)
             self.tensorboard.add_scalar('data/training_accuracy', training_accuracy, epoch)
