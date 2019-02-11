@@ -27,17 +27,18 @@ def evaluate_BAY(learning_rate, weight_decay):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = Net(max_epochs, learning_rate, weight_decay).to(device)
 
-    patience = 1
-    training_losses, validation_losses = model.fit(trainloader, validationloader, patience)
+    training_losses, validation_losses = model.fit(trainloader, validationloader, keep_best=True, patience=-1)
+    best_val_loss = min(validation_losses)
+    best_epoch = validation_losses.index(best_val_loss)
 
     accuracy, test_loss = model.eval_metrics(testloader)
 
     with open(csv_evaluations_file, mode='a') as file_csv:
         file_csv = csv.writer(file_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        file_csv.writerow([hyp_opt, str(learning_rate), str(weight_decay), str(max_epochs), str(training_losses[-1]),
-                           str(validation_losses[-1]), str(test_loss), str(accuracy)])
+        file_csv.writerow([hyp_opt, str(learning_rate), str(weight_decay), str(max_epochs), str(training_losses[best_epoch]),
+                           str(best_val_loss), str(test_loss), str(accuracy)])
 
-    return -validation_losses[-1]
+    return -best_val_loss
 
 
 if __name__ == "__main__":
@@ -48,6 +49,9 @@ if __name__ == "__main__":
     ''' CIFAR10 Dataset reading '''
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     trainloader, validationloader, testloader = utils.getCIFAR10(transform=transform, validation=True)
+
+    ''' Same initial point for all nets '''
+    Net.same_initial_point(True)
 
     ''' Radial Basis Function hyperparameters optimization '''
     print("Beginning hyperparameters optimization with RBF")

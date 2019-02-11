@@ -10,6 +10,16 @@ from tensorboardX import SummaryWriter
 
 class Net(nn.Module):
 
+    same = False
+    initial_state = None
+    @staticmethod
+    def same_initial_point(same):
+        Net.same = False
+        if same:
+            net = Net(0,0,0)
+            Net.initial_state = net.state_dict()
+        Net.same = same
+
     def __init__(self, max_epochs, learning_rate, weight_decay, useGPU=True):
         super(Net, self).__init__()
 
@@ -38,6 +48,9 @@ class Net(nn.Module):
         if self.device == "cpu":
             self.useGPU = False
 
+        if Net.same and Net.initial_state is not None:
+            self.load_state_dict(Net.initial_state)
+
     def forward(self, x):
         x = self.pool(F.relu(self.conv2(F.relu(self.conv1(x)))))
         x = self.pool(F.relu(self.conv4(F.relu(self.conv3(x)))))
@@ -48,10 +61,11 @@ class Net(nn.Module):
         return x
 
     # patience: number of epochs without validation loss improvements for early stopping
-    def fit(self, trainloader, validationloader, patience=-1):
+    def fit(self, trainloader, validationloader, keep_best=True, patience=-1):
         training_losses = []
         validation_losses = []
         best_validation_loss = 9999999999
+        dict_best = None
         waited_epochs = 0
         for epoch in range(self.max_epochs):  # loop over the dataset multiple times
 
@@ -113,6 +127,9 @@ class Net(nn.Module):
             ''' early stopping '''
             if validation_loss < best_validation_loss:
                 waited_epochs = 0
+                best_validation_loss = validation_loss
+                if keep_best:
+                    dict_best = self.state_dict()
             else:
                 if waited_epochs == patience:
                     print("Training terminated by early stopping on epoch " + str(epoch))
@@ -120,7 +137,8 @@ class Net(nn.Module):
                 waited_epochs += 1
 
         self.tensorboard.close()
-
+        if keep_best and dict_best is not None:
+            self.load_state_dict(dict_best)
         return training_losses, validation_losses
 
     def eval_metrics(self, testloader):
