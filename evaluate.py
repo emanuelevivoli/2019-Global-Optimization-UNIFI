@@ -15,9 +15,9 @@ log_file = "log.txt"
 csv_evaluations_file = "evaluations.csv"
 
 # optimization parameters
-max_epochs = 1
-num_evaluations = 4
-init_points_BAY = 2
+max_epochs = 70
+num_evaluations = 25
+init_points_BAY = 5
 
 # hyperparameters domains
 hyp_domains = {"learning_rate": (0.0001, 0.1), "weight_decay": (0, 0.001)}
