@@ -20,7 +20,7 @@ class Net(nn.Module):
             Net.initial_state = net.state_dict()
         Net.same = same
 
-    def __init__(self, max_epochs, learning_rate, weight_decay, useGPU=True):
+    def __init__(self, max_epochs, learning_rate, weight_decay, hyp_opt_name="", gpu=None):
         super(Net, self).__init__()
 
         # net layers
@@ -40,13 +40,14 @@ class Net(nn.Module):
         # max training epochs
         self.max_epochs = max_epochs
 
-        self.tensorboard = SummaryWriter()
+        if max_epochs > 0:
+            self.tensorboard = SummaryWriter("runs/" + hyp_opt_name + ",lr=" + str(learning_rate) + ",wd=" + str(weight_decay))
 
         # selection of device to use
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.useGPU = useGPU
+        self.device = torch.device("cuda:" + str(gpu) if torch.cuda.is_available() and gpu is not None else "cpu")
+        self.gpu = gpu
         if self.device == "cpu":
-            self.useGPU = False
+            self.gpu = None
 
         if Net.same and Net.initial_state is not None:
             self.load_state_dict(Net.initial_state)
@@ -62,22 +63,28 @@ class Net(nn.Module):
 
     # patience: number of epochs without validation loss improvements for early stopping
     def fit(self, trainloader, validationloader, keep_best=True, patience=-1):
+        assert self.max_epochs > 0
         training_losses = []
         validation_losses = []
+        training_accuracies = []
+        validation_accuracies = []
         best_validation_loss = 9999999999
         dict_best = None
         waited_epochs = 0
+
         for epoch in range(self.max_epochs):  # loop over the dataset multiple times
 
             ''' calculate training loss and do optimizer step '''
             training_loss = 0.0
-            training_loss_updates = 0
+            training_num_minibatches = 0
+            training_correct_predictions = 0
+            training_examples = 0
             for i, data in enumerate(trainloader, 0):
 
                 # get the inputs from training set
                 inputs, labels = data
 
-                if self.useGPU:
+                if self.gpu is not None:
                     inputs, labels = inputs.to(self.device), labels.to(self.device)
 
                 # zero the parameter gradients
@@ -91,38 +98,59 @@ class Net(nn.Module):
 
                 # training loss update
                 training_loss += loss.item()
-                training_loss_updates += 1
+                training_num_minibatches += 1
 
-            training_loss /= training_loss_updates
+                # calculate correct predictions for accuracy
+                _, predicted = torch.max(outputs.data, 1)
+                training_examples += labels.size(0)
+                training_correct_predictions += (predicted == labels).sum().item()
+
+            training_loss /= training_num_minibatches
             training_losses.append(training_loss)
+            training_accuracy = training_correct_predictions / training_examples
+            training_accuracies.append(training_accuracy)
 
             ''' calculate validation loss '''
             validation_loss = 0.0
-            validation_loss_updates = 0
-            for i, data in enumerate(validationloader, 0):
+            validation_num_minibatches = 0
+            validation_correct_predictions = 0
+            validation_examples = 0
+            with torch.no_grad():
+                for i, data in enumerate(validationloader, 0):
 
-                # get the inputs from validation set
-                inputs, labels = data
-                if self.useGPU:
-                    inputs, labels = inputs.to(self.device), labels.to(self.device)
+                    # get the inputs from validation set
+                    inputs, labels = data
+                    if self.gpu is not None:
+                        inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-                # predict batch labels
-                outputs = self(inputs)
+                    # predict batch labels
+                    outputs = self(inputs)
 
-                # calculate batch loss
-                loss = self.criterion(outputs, labels)
+                    # calculate batch loss
+                    loss = self.criterion(outputs, labels)
 
-                # validation loss update
-                validation_loss += loss.item()
-                validation_loss_updates += 1
-            validation_loss /= validation_loss_updates
+                    # validation loss update
+                    validation_loss += loss.item()
+                    validation_num_minibatches += 1
+
+                    # calculate correct predictions for accuracy
+                    _, predicted = torch.max(outputs.data, 1)
+                    validation_examples += labels.size(0)
+                    validation_correct_predictions += (predicted == labels).sum().item()
+
+            validation_loss /= validation_num_minibatches
             validation_losses.append(validation_loss)
+            validation_accuracy = validation_correct_predictions / validation_examples
+            validation_accuracies.append(validation_accuracy)
 
             ''' print and save info of this epoch '''
             print("epoch " + str(epoch+1) + "/" + str(self.max_epochs) + ": training_loss=" + str(training_loss) +
-                  ", validation_loss=" + str(validation_loss), end="\r")
+                  ", validation_loss=" + str(validation_loss) + "training_accuracy=" + str(training_accuracy) +
+                  "validation_accuracy=" + str(validation_accuracy), end="\r")
             self.tensorboard.add_scalar('data/training_loss', training_loss, epoch)
             self.tensorboard.add_scalar('data/validation_loss', validation_loss, epoch)
+            self.tensorboard.add_scalar('data/training_accuracy', training_accuracy, epoch)
+            self.tensorboard.add_scalar('data/validation_accuracy', validation_accuracy, epoch)
 
             ''' early stopping '''
             if validation_loss < best_validation_loss:
@@ -137,9 +165,12 @@ class Net(nn.Module):
                 waited_epochs += 1
 
         self.tensorboard.close()
+
+        # load best weights
         if keep_best and dict_best is not None:
             self.load_state_dict(dict_best)
-        return training_losses, validation_losses
+
+        return training_losses, validation_losses, training_accuracies, validation_accuracies
 
     def eval_metrics(self, testloader):
 
@@ -152,7 +183,7 @@ class Net(nn.Module):
 
                 # get some test images
                 images, labels = data
-                if self.useGPU:
+                if self.gpu is not None:
                     images, labels = images.to(self.device), labels.to(self.device)
 
                 # images classes prediction
@@ -167,9 +198,9 @@ class Net(nn.Module):
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        accuracy = 100 * correct / total
+        accuracy = correct / total
         loss /= num_batches
-        return round(accuracy, 1), loss
+        return loss, accuracy
 
 
 if __name__ == "__main__":

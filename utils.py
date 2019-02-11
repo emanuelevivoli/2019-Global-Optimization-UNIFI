@@ -2,6 +2,7 @@ import sys
 import torch
 import torchvision
 from torch.utils.data import sampler
+import torchvision.transforms as transforms
 
 
 class Logger:
@@ -34,7 +35,9 @@ class ChunkSampler(sampler.Sampler):
         return self.num_samples
 
 
-def getCIFAR10(transform=None, validation=True):
+def getCIFAR10(validation=True):
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     nw = 4      # number of workers threads
     bs = 64     # batch size
