@@ -10,6 +10,8 @@ This repo contains codes and documentations for the "Global Optimization" course
 
 The projects has been conducted together with [@fedem96](https://github.com/fedem96).
 
+The report file (in _Italian_) can be found [here](https://github.com/emanuelevivoli/2019-Global-Optimization-UNIFI/blob/master/relazione%20(in%20italiano).pdf).
+
 # Hyperparameters Optimization
 
 The aim of this project is to compare two algorithms for hyperparameters global optimization, one based on Radial Basis Functions and the other based on Bayesian gaussian processes. 
